@@ -1,0 +1,9 @@
+# paper-plugin.yml
+name: PurpurInsight
+main: cancelcloud.PurpurInsightPlugin
+version: "1.0.0"
+api-version: "1.21"
+load: STARTUP
+authors:
+  - Lukas
+description: "Sammelt Server-Statistiken und sendet sie per Discord-Slash-Command."
