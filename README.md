@@ -18,6 +18,9 @@ PurpurInsight is a Paper plugin for Minecraft 1.21.4 that integrates a Discord b
 - Average player latency
 - Top 5 players by playtime
 - Disk usage (total / free)
+- Scheduled updates to the stats channel
+- Ping command
+- Admin alerts for critical server load
 
 ### Requirements
 - Java 21
@@ -43,7 +46,9 @@ bot:
   token: "YOUR_BOT_TOKEN"
   guild-id: 123456789012345678
   stats-channel-id: 123456789012345678
+  admin-channel-id: 123456789012345678
   command-name: "stats"
+auto-update-minutes: 30
 playtime: {}
 ```
 
@@ -81,6 +86,9 @@ PurpurInsight ist ein Paper-Plugin für Minecraft 1.21.4, das einen Discord-Bot 
 - Durchschnittliche Spieler-Latenz
 - Top 5 Spieler nach Spielzeit
 - Festplattennutzung (gesamt / frei)
+- Automatische Updates im Discord-Kanal
+- Ping-Befehl
+- Admin-Benachrichtigungen bei kritischer Serverlast
 
 ### Voraussetzungen
 - Java 21
@@ -106,7 +114,9 @@ bot:
   token: "DEIN_BOT_TOKEN"
   guild-id: 123456789012345678
   stats-channel-id: 123456789012345678
+  admin-channel-id: 123456789012345678
   command-name: "stats"
+auto-update-minutes: 30
 playtime: {}
 ```
 
