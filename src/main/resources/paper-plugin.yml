@@ -7,3 +7,8 @@ load: STARTUP
 authors:
   - Lukas
 description: "Sammelt Server-Statistiken und sendet sie per Discord-Slash-Command."
+commands:
+  purpurinsight:
+    description: "Setzt Discord-Channel-IDs"
+    usage: "/purpurinsight <stats-channel|admin-channel> <id>"
+    permission: purpurstats:discordsettings

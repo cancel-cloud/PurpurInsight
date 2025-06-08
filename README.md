@@ -18,6 +18,10 @@ PurpurInsight is a Paper plugin for Minecraft 1.21.4 that integrates a Discord b
 - Average player latency
 - Top 5 players by playtime
 - Disk usage (total / free)
+- Scheduled updates to the stats channel
+- Ping command
+- Admin alerts for critical server load
+- In-game command `/purpurinsight` to change Discord channel IDs
 
 ### Requirements
 - Java 21
@@ -43,7 +47,9 @@ bot:
   token: "YOUR_BOT_TOKEN"
   guild-id: 123456789012345678
   stats-channel-id: 123456789012345678
+  admin-channel-id: 123456789012345678
   command-name: "stats"
+auto-update-minutes: 30
 playtime: {}
 ```
 
@@ -51,6 +57,7 @@ playtime: {}
 
 * In Discord, type `/stats` in your configured guild and channel.
 * The bot will reply with an embed containing all configured statistics.
+* Use `/purpurinsight <stats-channel|admin-channel> <id>` in-game to update the Discord channel IDs. The bot will restart automatically.
 
 ### Development
 
@@ -81,6 +88,10 @@ PurpurInsight ist ein Paper-Plugin für Minecraft 1.21.4, das einen Discord-Bot 
 - Durchschnittliche Spieler-Latenz
 - Top 5 Spieler nach Spielzeit
 - Festplattennutzung (gesamt / frei)
+- Automatische Updates im Discord-Kanal
+- Ping-Befehl
+- Admin-Benachrichtigungen bei kritischer Serverlast
+- Befehl `/purpurinsight`, um Discord-Kanäle zu ändern
 
 ### Voraussetzungen
 - Java 21
@@ -106,7 +117,9 @@ bot:
   token: "DEIN_BOT_TOKEN"
   guild-id: 123456789012345678
   stats-channel-id: 123456789012345678
+  admin-channel-id: 123456789012345678
   command-name: "stats"
+auto-update-minutes: 30
 playtime: {}
 ```
 
@@ -114,6 +127,7 @@ playtime: {}
 
 * In Discord `/stats` in der konfigurierten Gilde und im Kanal eingeben.
 * Der Bot antwortet mit einem Embed, das alle Statistiken enthält.
+* Mit `/purpurinsight <stats-channel|admin-channel> <id>` können die Discord-Kanäle im Spiel geändert werden; der Bot startet danach neu.
 
 ### Beitrag
 
