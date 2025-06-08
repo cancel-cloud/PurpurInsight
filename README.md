@@ -94,6 +94,7 @@ PurpurInsight ist ein Paper-Plugin für Minecraft 1.21.4, das einen Discord-Bot 
 - Admin-Benachrichtigungen bei kritischer Serverlast
 - Befehl `/purpurinsight`, um Discord-Kanäle zu ändern oder den Bot neu zu starten
 
+
 ### Voraussetzungen
 - Java 21
 - Paper-/Purpur-Server 1.21.4

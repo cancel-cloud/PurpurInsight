@@ -150,6 +150,7 @@ class PurpurInsightPlugin : JavaPlugin() {
     }
 
     private fun startBot() {
+
         jda = light(botConfig.token, enableCoroutines = true) {
             intents += listOf(
                 GatewayIntent.GUILD_MESSAGES,
@@ -180,7 +181,21 @@ class PurpurInsightPlugin : JavaPlugin() {
             val slashEvent = event as? SlashCommandInteractionEvent ?: return@onCommand
             AutoUpdatesCommand(slashEvent)
         }
+
+        jda.onCommand("ping") { event: GenericCommandInteractionEvent ->
+            val slashEvent = event as? SlashCommandInteractionEvent ?: return@onCommand
+            PingCommand(slashEvent)
+        }
+
+        jda.onCommand("auto-updates") { event: GenericCommandInteractionEvent ->
+            val slashEvent = event as? SlashCommandInteractionEvent ?: return@onCommand
+            AutoUpdatesCommand(slashEvent)
+        }
+
+        startAutoUpdates()
+        startMonitoring()
     }
+
 
     fun restartBot() {
         updateTask?.cancel()
@@ -188,9 +203,76 @@ class PurpurInsightPlugin : JavaPlugin() {
         if (this::jda.isInitialized) {
             jda.shutdownNow()
         }
+
         botConfig = BotConfig.load(config)
         startBot()
         startAutoUpdates()
         startMonitoring()
+        
+    private fun startAutoUpdates() {
+        updateTask?.cancel()
+        if (autoUpdateMinutes <= 0) return
+        val ticks = autoUpdateMinutes * 60L * 20L
+        updateTask = server.scheduler.runTaskTimer(this, Runnable {
+            val stats = StatsService.collectAll()
+            val embed = EmbedBuilderUtil.buildEmbed(stats).build()
+            val channel = jda.getTextChannelById(botConfig.statsChannelId)
+            channel?.sendMessageEmbeds(embed)?.queue()
+        }, ticks, ticks)
+    }
+
+    private fun startMonitoring() {
+        monitorTask?.cancel()
+        val interval = 60L * 20L // every minute
+        monitorTask = server.scheduler.runTaskTimer(this, Runnable {
+            val stats = StatsService.collectAll()
+            val channel = jda.getTextChannelById(botConfig.adminChannelId)
+            channel ?: return@Runnable
+
+            val playerLoad = stats.onlinePlayers.toDouble() / stats.maxPlayers
+            if (playerLoad >= 0.8 && !playerAlert) {
+                channel.sendMessage("Player count high: ${stats.onlinePlayers}/${stats.maxPlayers}").queue()
+                playerAlert = true
+            } else if (playerLoad < 0.7) {
+                playerAlert = false
+            }
+
+            val memLoad = stats.ramUsed.toDouble() / stats.ramMax
+            if (memLoad >= 0.9 && !memoryAlert) {
+                channel.sendMessage("Memory usage critical: ${(memLoad*100).toInt()}%").queue()
+                memoryAlert = true
+            } else if (memLoad < 0.8) {
+                memoryAlert = false
+            }
+
+            if (stats.cpuLoad >= 90 && !cpuAlert) {
+                channel.sendMessage("CPU load critical: ${"%.1f".format(stats.cpuLoad)}%").queue()
+                cpuAlert = true
+            } else if (stats.cpuLoad < 80) {
+                cpuAlert = false
+            }
+
+            if (stats.tps1 < 15 && !tpsAlert) {
+                channel.sendMessage("TPS low: ${"%.2f".format(stats.tps1)}").queue()
+                tpsAlert = true
+            } else if (stats.tps1 >= 16) {
+                tpsAlert = false
+            }
+
+            val diskUsage = 1.0 - stats.diskFree.toDouble() / stats.diskTotal
+            if (diskUsage >= 0.9 && !diskAlert) {
+                channel.sendMessage("Disk almost full: ${(diskUsage*100).toInt()}% used").queue()
+                diskAlert = true
+            } else if (diskUsage < 0.85) {
+                diskAlert = false
+            }
+        }, interval, interval)
+    }
+
+    fun updateInterval(minutes: Long) {
+        autoUpdateMinutes = minutes
+        config.set("auto-update-minutes", minutes)
+        saveConfig()
+        startAutoUpdates()
     }
 }
