@@ -21,6 +21,7 @@ PurpurInsight is a Paper plugin for Minecraft 1.21.4 that integrates a Discord b
 - Scheduled updates to the stats channel
 - Ping command
 - Admin alerts for critical server load
+- In-game command `/purpurinsight` to change Discord channel IDs or restart the bot
 
 ### Requirements
 - Java 21
@@ -56,6 +57,8 @@ playtime: {}
 
 * In Discord, type `/stats` in your configured guild and channel.
 * The bot will reply with an embed containing all configured statistics.
+* Use `/purpurinsight <stats-channel|admin-channel> <id>` in-game to update the Discord channel IDs. The bot will restart automatically.
+* Run `/purpurinsight restart` in-game to manually restart the bot without restarting the server.
 
 ### Development
 
@@ -89,6 +92,8 @@ PurpurInsight ist ein Paper-Plugin für Minecraft 1.21.4, das einen Discord-Bot 
 - Automatische Updates im Discord-Kanal
 - Ping-Befehl
 - Admin-Benachrichtigungen bei kritischer Serverlast
+- Befehl `/purpurinsight`, um Discord-Kanäle zu ändern oder den Bot neu zu starten
+
 
 ### Voraussetzungen
 - Java 21
@@ -124,6 +129,8 @@ playtime: {}
 
 * In Discord `/stats` in der konfigurierten Gilde und im Kanal eingeben.
 * Der Bot antwortet mit einem Embed, das alle Statistiken enthält.
+* Mit `/purpurinsight <stats-channel|admin-channel> <id>` können die Discord-Kanäle im Spiel geändert werden; der Bot startet danach neu.
+* Mit `/purpurinsight restart` lässt sich der Bot neu starten, ohne den Server neu zu starten.
 
 ### Beitrag
 
