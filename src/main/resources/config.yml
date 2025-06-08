@@ -2,6 +2,7 @@ bot:
   token: "DEIN_BOT_TOKEN"
   guild-id: 123456789012345678
   stats-channel-id: 123456789012345678
+  admin-channel-id: 123456789012345678
   command-name: "stats"
 
 auto-update-minutes: 30
