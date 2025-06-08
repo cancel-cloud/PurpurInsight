@@ -3,13 +3,8 @@ package cancelcloud.command
 import cancelcloud.PurpurInsightPlugin
 import cancelcloud.service.LinkService
 import cancelcloud.service.BotService
-import net.dv8tion.jda.api.entities.User
-import net.dv8tion.jda.api.entities.Member
-import net.dv8tion.jda.api.entities.Guild
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel
-import net.dv8tion.jda.api.interactions.components.buttons.Button
-import net.dv8tion.jda.api.utils.concurrent.Task
 import net.dv8tion.jda.api.EmbedBuilder
+import net.dv8tion.jda.api.interactions.components.buttons.Button
 import org.bukkit.entity.Player
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
@@ -73,91 +68,68 @@ class DiscordChannelCommand : CommandExecutor, TabCompleter {
                     return true
                 }
                 val username = args[1]
-                
-                // Debug: Print available users to console
-                plugin.logger.info("=== LINK COMMAND DEBUG ===")
-                plugin.logger.info("Searching for Discord user: '$username'")
-                
-                // Debug: Print online Minecraft players
-                val onlinePlayers = plugin.server.onlinePlayers.map { it.name }
-                plugin.logger.info("Online Minecraft players (${onlinePlayers.size}): ${onlinePlayers.joinToString(", ")}")
-                
-                // Debug: Print Discord guild members
-                val guild = BotService.jda.getGuildById(plugin.config.getString("bot.guild-id")!!)
-                if (guild != null) {
-                    plugin.logger.info("Guild found: ${guild.name} (ID: ${guild.id})")
-                    plugin.logger.info("Bot permissions in guild: ${guild.selfMember.permissions}")
-                    
-                    // Check cached members first
-                    val cachedMembers = guild.members
-                    plugin.logger.info("Cached guild members (${cachedMembers.size}):")
-                    cachedMembers.forEach { member: Member ->
-                        plugin.logger.info("  - Username: ${member.user.name}, Nickname: ${member.nickname ?: "none"}, ID: ${member.id}")
+
+                plugin.server.scheduler.runTaskAsynchronously(plugin) {
+                    val guild = BotService.jda.getGuildById(plugin.config.getString("bot.guild-id")!!)
+                    if (guild == null) {
+                        plugin.server.scheduler.runTask(plugin) {
+                            sender.sendMessage("\u00a7cGuild not found.")
+                        }
+                        return@runTaskAsynchronously
                     }
-                    
-                } else {
-                    plugin.logger.info("Guild not found! Check your guild-id in config.")
-                }
-                
-                // Try to load all members first if cache is small
-                if (guild != null && guild.memberCount > guild.memberCache.size()) {
-                    plugin.logger.info("Cache incomplete (${guild.memberCache.size()}/${guild.memberCount}), loading all members...")
-                    try {
-                        guild.loadMembers().get() // Load all members synchronously
-                        plugin.logger.info("Loaded all members, cache now has ${guild.memberCache.size()} members")
-                    } catch (e: Exception) {
-                        plugin.logger.warning("Failed to load all members: ${e.message}")
+
+                    fun finish(member: net.dv8tion.jda.api.entities.Member?) {
+                        if (member == null) {
+                            plugin.server.scheduler.runTask(plugin) {
+                                sender.sendMessage("\u00a7cDiscord user '$username' not found in this server.")
+                            }
+                            return
+                        }
+
+                        val user = member.user
+                        val id = user.idLong
+                        LinkService.createRequest(sender.uniqueId, id)
+                        val channel = BotService.jda.getTextChannelById(plugin.config.getLong("bot.stats-channel-id"))
+                        val embed = EmbedBuilder()
+                            .setTitle(sender.server.name)
+                            .setDescription("Minecraft user ${sender.name} wants to link this discord account with its minecraft account. Accept?")
+                            .build()
+
+                        channel?.sendMessage("<@${id}>")
+                            ?.setEmbeds(embed)
+                            ?.setActionRow(
+                                Button.danger("link:no:${sender.uniqueId}", "No"),
+                                Button.success("link:yes:${sender.uniqueId}", "Yes")
+                            )
+                            ?.queue()
+
+                        plugin.server.scheduler.runTask(plugin) {
+                            sender.sendMessage("\u00a7aRequest sent to Discord user ${user.asTag}.")
+                        }
                     }
-                }
-                
-                // Search for user using cached members first
-                var member = guild?.let { g ->
-                    g.getMembersByName(username, true).firstOrNull() 
-                        ?: g.getMembersByEffectiveName(username, true).firstOrNull()
-                        ?: g.getMembersByNickname(username, true).firstOrNull()
-                }
-                
-                // If not found in cache and cache is incomplete, search through all cached members case-insensitively
-                if (member == null && guild != null) {
-                    plugin.logger.info("Member '$username' not found via exact name search, trying case-insensitive search...")
-                    
-                    member = guild.members.find { m ->
-                        m.user.name.equals(username, ignoreCase = true) ||
-                        m.effectiveName.equals(username, ignoreCase = true) ||
-                        (m.nickname?.equals(username, ignoreCase = true) == true)
-                    }
-                    
-                    if (member != null) {
-                        plugin.logger.info("Found Discord member via case-insensitive search: ${member.user.name} (ID: ${member.id})")
+
+                    var member = guild.getMembersByName(username, true).firstOrNull()
+                        ?: guild.getMembersByEffectiveName(username, true).firstOrNull()
+                        ?: guild.getMembersByNickname(username, true).firstOrNull()
+
+                    if (member != null || guild.memberCache.size() >= guild.memberCount) {
+                        finish(member)
                     } else {
-                        plugin.logger.info("Member '$username' not found in cached members")
+                        guild.loadMembers().onSuccess {
+                            val found = guild.members.find { m ->
+                                m.user.name.equals(username, true) ||
+                                m.effectiveName.equals(username, true) ||
+                                (m.nickname?.equals(username, true) == true)
+                            }
+                            finish(found)
+                        }.onError { e ->
+                            plugin.logger.warning("Failed to load Discord members: ${e.message}")
+                            plugin.server.scheduler.runTask(plugin) {
+                                sender.sendMessage("\u00a7cFailed to load Discord members.")
+                            }
+                        }
                     }
                 }
-                
-                if (member == null) {
-                    plugin.logger.info("Member '$username' not found in guild")
-                    sender.sendMessage("\u00a7cDiscord user '$username' not found in this server.")
-                    sender.sendMessage("\u00a7cTry using either the Discord username or server nickname.")
-                    return true
-                } else {
-                    plugin.logger.info("Found Discord member: ${member.user.name} (ID: ${member.id})")
-                }
-                val user = member.user
-                val id = user.idLong
-                LinkService.createRequest(sender.uniqueId, id)
-                val channel = BotService.jda.getTextChannelById(plugin.config.getLong("bot.stats-channel-id"))
-                val embed = EmbedBuilder()
-                    .setTitle(sender.server.name)
-                    .setDescription("Minecraft user ${sender.name} wants to link this discord account with its minecraft account. Accept?")
-                    .build()
-                channel?.sendMessage("<@${id}>")
-                    ?.setEmbeds(embed)
-                    ?.setActionRow(
-                        Button.danger("link:no:${sender.uniqueId}", "No"),
-                        Button.success("link:yes:${sender.uniqueId}", "Yes")
-                    )
-                    ?.queue()
-                sender.sendMessage("\u00a7aRequest sent to Discord user ${user.asTag}.")
             }
             "confirm" -> {
                 if (sender !is Player) return true
