@@ -6,6 +6,7 @@ import cancelcloud.service.BotService
 import net.dv8tion.jda.api.entities.User
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel
 import net.dv8tion.jda.api.interactions.components.buttons.Button
+import net.dv8tion.jda.api.EmbedBuilder
 import org.bukkit.entity.Player
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
@@ -20,7 +21,7 @@ class DiscordChannelCommand : CommandExecutor, TabCompleter {
         }
         val plugin = PurpurInsightPlugin.instance
         if (args.isEmpty()) {
-            sender.sendMessage("\u00a7cUsage: /purpurinsight <stats-channel|admin-channel> <id> | restart | link <discordId> | confirm <discordId>")
+            sender.sendMessage("\u00a7cUsage: /purpurinsight <stats-channel|admin-channel> <id> | restart | link <discordName> | confirm <discordId>")
             return true
         }
 
@@ -65,23 +66,30 @@ class DiscordChannelCommand : CommandExecutor, TabCompleter {
                     return true
                 }
                 if (args.size != 2) {
-                    sender.sendMessage("\u00a7cUsage: /purpurinsight link <discordId>")
+                    sender.sendMessage("\u00a7cUsage: /purpurinsight link <discordName>")
                     return true
                 }
-                val id = args[1].replace("[^0-9]".toRegex(), "").toLongOrNull()
-                if (id == null) {
-                    sender.sendMessage("\u00a7cInvalid user ID.")
+                val name = args[1]
+                val user = BotService.jda.getUsersByName(name, true).firstOrNull()
+                if (user == null) {
+                    sender.sendMessage("\u00a7cUser not found.")
                     return true
                 }
+                val id = user.idLong
                 LinkService.createRequest(sender.uniqueId, id)
-                BotService.jda.retrieveUserById(id).queue({ user: User ->
-                    user.openPrivateChannel().queue { ch: MessageChannel ->
-                        ch.sendMessage("Player ${sender.name} wants to link with you.")
-                            .setActionRow(Button.success("link:${sender.uniqueId}", "Yes"))
-                            .queue()
-                    }
-                }, {})
-                sender.sendMessage("\u00a7aRequest sent to Discord user.")
+                val channel = BotService.jda.getTextChannelById(plugin.config.getLong("bot.stats-channel-id"))
+                val embed = EmbedBuilder()
+                    .setTitle(sender.server.name)
+                    .setDescription("Minecraft user ${sender.name} wants to link this discord account with its minecraft account. Accept?")
+                    .build()
+                channel?.sendMessage("<@${id}>")
+                    ?.setEmbeds(embed)
+                    ?.setActionRow(
+                        Button.danger("link:no:${sender.uniqueId}", "No"),
+                        Button.success("link:yes:${sender.uniqueId}", "Yes")
+                    )
+                    ?.queue()
+                sender.sendMessage("\u00a7aRequest sent to Discord user ${user.asTag}.")
             }
             "confirm" -> {
                 if (sender !is Player) return true
@@ -91,7 +99,7 @@ class DiscordChannelCommand : CommandExecutor, TabCompleter {
                 LinkService.link(sender.uniqueId, id)
                 sender.sendMessage("\u00a7aAccounts linked.")
             }
-            else -> sender.sendMessage("\u00a7cUsage: /purpurinsight <stats-channel|admin-channel> <id> | restart | link <discordId> | confirm <discordId>")
+            else -> sender.sendMessage("\u00a7cUsage: /purpurinsight <stats-channel|admin-channel> <id> | restart | link <discordName> | confirm <discordId>")
         }
         return true
     }
