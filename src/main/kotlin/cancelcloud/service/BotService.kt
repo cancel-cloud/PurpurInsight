@@ -169,15 +169,37 @@ object BotService {
         }
 
         jda.listener<ButtonInteractionEvent> { e ->
-            if (e.componentId.startsWith("link:")) {
-                val uuid = UUID.fromString(e.componentId.substringAfter("link:"))
-                val req = LinkService.getRequestByDiscord(e.user.idLong)
-                if (req == uuid) {
-                    LinkService.takeRequest(uuid)
-                    LinkService.link(uuid, e.user.idLong)
-                    e.reply("Accounts linked!").setEphemeral(true).queue()
-                } else {
-                    e.reply("No request found.").setEphemeral(true).queue()
+            when {
+                e.componentId.startsWith("link:yes:") -> {
+                    val uuid = UUID.fromString(e.componentId.substringAfter("link:yes:"))
+                    val req = LinkService.getRequestByDiscord(e.user.idLong)
+                    if (req == uuid) {
+                        LinkService.takeRequest(uuid)
+                        LinkService.link(uuid, e.user.idLong)
+                        e.message.editMessage("Link accepted by <@${e.user.id}>").setComponents().queue()
+                        e.channel.sendMessage("<@${e.user.id}> linked with ${PurpurInsightPlugin.instance.server.getPlayer(uuid)?.name ?: "player"}.").queue()
+                        e.reply("Accounts linked!").setEphemeral(true).queue()
+                        PurpurInsightPlugin.instance.server.scheduler.runTask(PurpurInsightPlugin.instance) {
+                            PurpurInsightPlugin.instance.server.getPlayer(uuid)?.sendMessage("\u00a7aAccounts linked with ${e.user.asTag}.")
+                        }
+                    } else {
+                        e.reply("No request found.").setEphemeral(true).queue()
+                    }
+                }
+                e.componentId.startsWith("link:no:") -> {
+                    val uuid = UUID.fromString(e.componentId.substringAfter("link:no:"))
+                    val req = LinkService.getRequestByDiscord(e.user.idLong)
+                    if (req == uuid) {
+                        LinkService.takeRequest(uuid)
+                        e.message.editMessage("Link declined by <@${e.user.id}>").setComponents().queue()
+                        e.channel.sendMessage("<@${e.user.id}> declined the link request.").queue()
+                        e.reply("Request declined.").setEphemeral(true).queue()
+                        PurpurInsightPlugin.instance.server.scheduler.runTask(PurpurInsightPlugin.instance) {
+                            PurpurInsightPlugin.instance.server.getPlayer(uuid)?.sendMessage("\u00a7cLink request declined by ${e.user.asTag}.")
+                        }
+                    } else {
+                        e.reply("No request found.").setEphemeral(true).queue()
+                    }
                 }
             }
         }
