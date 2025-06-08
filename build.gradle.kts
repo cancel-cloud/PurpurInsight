@@ -18,7 +18,7 @@ repositories {
 dependencies {
     // Verwende die aktuelle Purpur API – beachte: die Gruppe ist "io.purpurmc"
     compileOnly("org.purpurmc.purpur:purpur-api:1.21.5-R0.1-SNAPSHOT")
-    implementation("net.dv8tion:JDA:5.5.0")
+    implementation("net.dv8tion:JDA:5.6.0")
     implementation("club.minnced:jda-ktx:0.12.0")
     // Aktuelle Utility-Libraries von TheFruxz (aktualisierte Versionsnummern; ersetze ggf. durch neueste):
     implementation("com.github.TheFruxz:Stacked:2025.3-b66c374")

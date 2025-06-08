@@ -132,7 +132,8 @@ object BotService {
         jda = light(botConfig.token, enableCoroutines = true) {
             intents += listOf(
                 GatewayIntent.GUILD_MESSAGES,
-                GatewayIntent.MESSAGE_CONTENT
+                GatewayIntent.MESSAGE_CONTENT,
+                GatewayIntent.GUILD_MEMBERS
             )
         }
 
@@ -179,9 +180,9 @@ object BotService {
                         e.message.editMessage("Link accepted by <@${e.user.id}>").setComponents().queue()
                         e.channel.sendMessage("<@${e.user.id}> linked with ${PurpurInsightPlugin.instance.server.getPlayer(uuid)?.name ?: "player"}.").queue()
                         e.reply("Accounts linked!").setEphemeral(true).queue()
-                        PurpurInsightPlugin.instance.server.scheduler.runTask(PurpurInsightPlugin.instance) {
+                        PurpurInsightPlugin.instance.server.scheduler.runTask(PurpurInsightPlugin.instance, Runnable {
                             PurpurInsightPlugin.instance.server.getPlayer(uuid)?.sendMessage("\u00a7aAccounts linked with ${e.user.asTag}.")
-                        }
+                        })
                     } else {
                         e.reply("No request found.").setEphemeral(true).queue()
                     }
@@ -194,9 +195,9 @@ object BotService {
                         e.message.editMessage("Link declined by <@${e.user.id}>").setComponents().queue()
                         e.channel.sendMessage("<@${e.user.id}> declined the link request.").queue()
                         e.reply("Request declined.").setEphemeral(true).queue()
-                        PurpurInsightPlugin.instance.server.scheduler.runTask(PurpurInsightPlugin.instance) {
+                        PurpurInsightPlugin.instance.server.scheduler.runTask(PurpurInsightPlugin.instance, Runnable {
                             PurpurInsightPlugin.instance.server.getPlayer(uuid)?.sendMessage("\u00a7cLink request declined by ${e.user.asTag}.")
-                        }
+                        })
                     } else {
                         e.reply("No request found.").setEphemeral(true).queue()
                     }

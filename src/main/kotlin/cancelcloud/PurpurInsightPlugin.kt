@@ -3,7 +3,7 @@ package cancelcloud
 import org.bukkit.plugin.java.JavaPlugin
 import cancelcloud.config.BotConfig
 import cancelcloud.listener.PlayerListener
-import cancelcloud.command.DiscordChannelCommand
+import cancelcloud.command.CommandManager
 import cancelcloud.service.LinkService
 import cancelcloud.service.BotService
 import java.io.File
@@ -14,6 +14,7 @@ class PurpurInsightPlugin : JavaPlugin() {
     }
 
     private lateinit var botConfig: BotConfig
+    private lateinit var commandManager: CommandManager
 
     override fun onEnable() {
         instance = this
@@ -29,13 +30,12 @@ class PurpurInsightPlugin : JavaPlugin() {
 
         saveDefaultConfig()
         botConfig = BotConfig.load(config)
+        commandManager = CommandManager(this)
 
         server.pluginManager.registerEvents(PlayerListener(), this)
         LinkService.load(this)
 
-        getCommand("purpurinsight")?.setExecutor(DiscordChannelCommand())
-        getCommand("purpurinsight")?.tabCompleter = DiscordChannelCommand()
-
+        commandManager.registerCommands()
         BotService.init(this, botConfig)
     }
 
