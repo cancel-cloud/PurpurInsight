@@ -2,6 +2,7 @@ package cancelcloud.command
 
 import cancelcloud.PurpurInsightPlugin
 import cancelcloud.service.LinkService
+import cancelcloud.service.BotService
 import net.dv8tion.jda.api.entities.User
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel
 import net.dv8tion.jda.api.interactions.components.buttons.Button
@@ -36,7 +37,7 @@ class DiscordChannelCommand : CommandExecutor, TabCompleter {
                 }
                 plugin.config.set("bot.stats-channel-id", channelId)
                 plugin.saveConfig()
-                plugin.restartBot()
+                BotService.restart()
                 sender.sendMessage("\u00a7aStats channel updated and bot restarted.")
             }
             "admin-channel" -> {
@@ -51,11 +52,11 @@ class DiscordChannelCommand : CommandExecutor, TabCompleter {
                 }
                 plugin.config.set("bot.admin-channel-id", channelId)
                 plugin.saveConfig()
-                plugin.restartBot()
+                BotService.restart()
                 sender.sendMessage("\u00a7aAdmin channel updated and bot restarted.")
             }
             "restart" -> {
-                plugin.restartBot()
+                BotService.restart()
                 sender.sendMessage("\u00a7aPurpurInsight restarted.")
             }
             "link" -> {
@@ -73,7 +74,7 @@ class DiscordChannelCommand : CommandExecutor, TabCompleter {
                     return true
                 }
                 LinkService.createRequest(sender.uniqueId, id)
-                plugin.jda.retrieveUserById(id).queue({ user: User ->
+                BotService.jda.retrieveUserById(id).queue({ user: User ->
                     user.openPrivateChannel().queue { ch: MessageChannel ->
                         ch.sendMessage("Player ${sender.name} wants to link with you.")
                             .setActionRow(Button.success("link:${sender.uniqueId}", "Yes"))
