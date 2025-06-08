@@ -101,6 +101,7 @@ class CommandManager(private val plugin: PurpurInsightPlugin) {
                             }
                         )
                     )
+
                     .build(),
                 "Manage Discord channel settings"
             )

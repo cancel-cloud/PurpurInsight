@@ -19,127 +19,79 @@ class DiscordChannelCommand : CommandExecutor, TabCompleter {
         }
         val plugin = PurpurInsightPlugin.instance
         if (args.isEmpty()) {
-            sender.sendMessage("\u00a7cUsage: /purpurinsight <stats-channel|admin-channel> <id> | restart | link <username> | confirm <discordId>")
+            sender.sendMessage("\u00a7c\u00a7l❌ Usage: \u00a7f/purpurinsight \u00a76<stats-channel|admin-channel> \u00a7e<id> \u00a77| \u00a7brestart \u00a77| \u00a7dlink \u00a7e<username>")
             return true
         }
 
         when (args[0].lowercase()) {
             "stats-channel" -> {
                 if (args.size != 2) {
-                    sender.sendMessage("\u00a7cUsage: /purpurinsight stats-channel <id>")
+                    sender.sendMessage("\u00a7c\u00a7l❌ Usage: \u00a7f/purpurinsight stats-channel \u00a7e<channel-id>")
                     return true
                 }
                 val channelId = args[1].toLongOrNull()
                 if (channelId == null) {
-                    sender.sendMessage("\u00a7cInvalid channel ID.")
+                    sender.sendMessage("\u00a7c\u00a7l❌ Invalid channel ID! \u00a7fPlease provide a valid Discord channel ID.")
                     return true
                 }
                 plugin.config.set("bot.stats-channel-id", channelId)
                 plugin.saveConfig()
                 BotService.restart()
-                sender.sendMessage("\u00a7aStats channel updated and bot restarted.")
+                sender.sendMessage("\u00a7a\u00a7l✅ Stats channel updated! \u00a7fBot has been restarted with the new settings.")
             }
             "admin-channel" -> {
                 if (args.size != 2) {
-                    sender.sendMessage("\u00a7cUsage: /purpurinsight admin-channel <id>")
+                    sender.sendMessage("\u00a7c\u00a7l❌ Usage: \u00a7f/purpurinsight admin-channel \u00a7e<channel-id>")
                     return true
                 }
                 val channelId = args[1].toLongOrNull()
                 if (channelId == null) {
-                    sender.sendMessage("\u00a7cInvalid channel ID.")
+                    sender.sendMessage("\u00a7c\u00a7l❌ Invalid channel ID! \u00a7fPlease provide a valid Discord channel ID.")
                     return true
                 }
                 plugin.config.set("bot.admin-channel-id", channelId)
                 plugin.saveConfig()
                 BotService.restart()
-                sender.sendMessage("\u00a7aAdmin channel updated and bot restarted.")
+                sender.sendMessage("\u00a7a\u00a7l✅ Admin channel updated! \u00a7fBot has been restarted with the new settings.")
             }
             "restart" -> {
                 BotService.restart()
-                sender.sendMessage("\u00a7aPurpurInsight restarted.")
+                sender.sendMessage("\u00a7a\u00a7l🔄 PurpurInsight Bot Restarted! \u00a7fAll systems are now online.")
             }
             "link" -> {
                 if (sender !is Player) {
-                    sender.sendMessage("\u00a7cOnly players may link accounts.")
+                    sender.sendMessage("\u00a7c\u00a7l❌ Only players can link Discord accounts!")
                     return true
                 }
-                if (args.size != 2) {
-                    sender.sendMessage("\u00a7cUsage: /purpurinsight link <username>")
-                    return true
-                }
-                val username = args[1]
+                sender.sendMessage("\u00a7e\u00a7l⚠️ Account Linking Info")
+                sender.sendMessage("\u00a7f┌─────────────────────────────┐")
+                sender.sendMessage("\u00a7f│ \u00a7b\u00a7lTo link your Discord:       \u00a7f│")
+                sender.sendMessage("\u00a7f│                             │")
+                sender.sendMessage("\u00a7f│ \u00a791. \u00a7fGo to Discord           \u00a7f│")
+                sender.sendMessage("\u00a7f│ \u00a792. \u00a7fUse \u00a7d/link \u00a7e${sender.name}      \u00a7f│")
+                sender.sendMessage("\u00a7f│ \u00a793. \u00a7fClick confirmation      \u00a7f│")
+                sender.sendMessage("\u00a7f│                             │")
+                sender.sendMessage("\u00a7f└─────────────────────────────┘")
+                return true
 
-                plugin.server.scheduler.runTaskAsynchronously(plugin) {
-                    val guild = BotService.jda.getGuildById(plugin.config.getString("bot.guild-id")!!)
-                    if (guild == null) {
-                        plugin.server.scheduler.runTask(plugin) {
-                            sender.sendMessage("\u00a7cGuild not found.")
-                        }
-                        return@runTaskAsynchronously
-                    }
 
-                    fun finish(member: net.dv8tion.jda.api.entities.Member?) {
-                        if (member == null) {
-                            plugin.server.scheduler.runTask(plugin) {
-                                sender.sendMessage("\u00a7cDiscord user '$username' not found in this server.")
-                            }
-                            return
-                        }
-
-                        val user = member.user
-                        val id = user.idLong
-                        LinkService.createRequest(sender.uniqueId, id)
-                        val channel = BotService.jda.getTextChannelById(plugin.config.getLong("bot.stats-channel-id"))
-                        val embed = EmbedBuilder()
-                            .setTitle(sender.server.name)
-                            .setDescription("Minecraft user ${sender.name} wants to link this discord account with its minecraft account. Accept?")
-                            .build()
-
-                        channel?.sendMessage("<@${id}>")
-                            ?.setEmbeds(embed)
-                            ?.setActionRow(
-                                Button.danger("link:no:${sender.uniqueId}", "No"),
-                                Button.success("link:yes:${sender.uniqueId}", "Yes")
-                            )
-                            ?.queue()
-
-                        plugin.server.scheduler.runTask(plugin) {
-                            sender.sendMessage("\u00a7aRequest sent to Discord user ${user.asTag}.")
-                        }
-                    }
-
-                    var member = guild.getMembersByName(username, true).firstOrNull()
-                        ?: guild.getMembersByEffectiveName(username, true).firstOrNull()
-                        ?: guild.getMembersByNickname(username, true).firstOrNull()
-
-                    if (member != null || guild.memberCache.size() >= guild.memberCount) {
-                        finish(member)
-                    } else {
-                        guild.loadMembers().onSuccess {
-                            val found = guild.members.find { m ->
-                                m.user.name.equals(username, true) ||
-                                m.effectiveName.equals(username, true) ||
-                                (m.nickname?.equals(username, true) == true)
-                            }
-                            finish(found)
-                        }.onError { e ->
-                            plugin.logger.warning("Failed to load Discord members: ${e.message}")
-                            plugin.server.scheduler.runTask(plugin) {
-                                sender.sendMessage("\u00a7cFailed to load Discord members.")
-                            }
-                        }
-                    }
-                }
             }
             "confirm" -> {
                 if (sender !is Player) return true
                 val id = args.getOrNull(1)?.toLongOrNull() ?: return true
-                if (!LinkService.requestExists(sender.uniqueId, id)) return true
+                if (!LinkService.requestExists(sender.uniqueId, id)) {
+                    sender.sendMessage("\u00a7c\u00a7l❌ No pending link request found!")
+                    return true
+                }
                 LinkService.takeRequest(sender.uniqueId)
                 LinkService.link(sender.uniqueId, id)
-                sender.sendMessage("\u00a7aAccounts linked.")
+                sender.sendMessage("\u00a7a\u00a7l✅ Discord Account Linked! \u00a7fYour accounts are now connected.")
+                
+                // Send feedback to Discord
+                val channel = BotService.jda.getTextChannelById(plugin.config.getLong("bot.stats-channel-id"))
+                channel?.sendMessage("🔗<@${id}> you have now connected your Minecraft account with Discord.")?.queue()
             }
-            else -> sender.sendMessage("\u00a7cUsage: /purpurinsight <stats-channel|admin-channel> <id> | restart | link <username> | confirm <discordId>")
+            else -> sender.sendMessage("\u00a7c\u00a7l❌ Unknown command! \u00a7fUse: \u00a76stats-channel\u00a7f, \u00a76admin-channel\u00a7f, \u00a7brestart\u00a7f, or \u00a7dlink")
         }
         return true
     }
@@ -147,7 +99,7 @@ class DiscordChannelCommand : CommandExecutor, TabCompleter {
     override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): MutableList<String>? {
         if (!sender.hasPermission("purpurstats:discordsettings")) return mutableListOf()
         return when (args.size) {
-            1 -> listOf("stats-channel", "admin-channel", "restart", "link", "confirm").filter { it.startsWith(args[0]) }.toMutableList()
+            1 -> listOf("stats-channel", "admin-channel", "restart", "link").filter { it.startsWith(args[0]) }.toMutableList()
             else -> mutableListOf()
         }
     }

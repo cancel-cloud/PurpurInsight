@@ -57,7 +57,23 @@ object BotService {
         updateTask?.cancel()
         monitorTask?.cancel()
         if (this::jda.isInitialized) {
-            jda.shutdownNow()
+            try {
+                plugin.logger.info("Shutting down Discord bot...")
+                jda.shutdown()
+                if (!jda.awaitShutdown(java.time.Duration.ofSeconds(10))) {
+                    plugin.logger.warning("JDA shutdown timed out, forcing shutdown...")
+                    jda.shutdownNow()
+                }
+                plugin.logger.info("Discord bot shutdown complete.")
+            } catch (e: Exception) {
+                plugin.logger.warning("Error during JDA shutdown: ${e.message}")
+                // Force shutdown if graceful shutdown fails
+                try {
+                    jda.shutdownNow()
+                } catch (e2: Exception) {
+                    // Ignore errors during force shutdown
+                }
+            }
         }
     }
 
@@ -177,14 +193,14 @@ object BotService {
                     if (req == uuid) {
                         LinkService.takeRequest(uuid)
                         LinkService.link(uuid, e.user.idLong)
-                        e.message.editMessage("Link accepted by <@${e.user.id}>").setComponents().queue()
-                        e.channel.sendMessage("<@${e.user.id}> linked with ${PurpurInsightPlugin.instance.server.getPlayer(uuid)?.name ?: "player"}.").queue()
-                        e.reply("Accounts linked!").setEphemeral(true).queue()
+                        e.message.editMessage("✅ **Link request accepted by <@${e.user.id}>**").setComponents().queue()
+                        e.channel.sendMessage("🔗 <@${e.user.id}> successfully linked with **${PurpurInsightPlugin.instance.server.getPlayer(uuid)?.name ?: "player"}**!").queue()
+                        e.reply("✅ **Accounts linked successfully!** You're now connected to your Minecraft account.").setEphemeral(true).queue()
                         PurpurInsightPlugin.instance.server.scheduler.runTask(PurpurInsightPlugin.instance, Runnable {
-                            PurpurInsightPlugin.instance.server.getPlayer(uuid)?.sendMessage("\u00a7aAccounts linked with ${e.user.asTag}.")
+                            PurpurInsightPlugin.instance.server.getPlayer(uuid)?.sendMessage("\u00a7a\u00a7l✅ Account Linked! \u00a7fYour Discord account \u00a7b${e.user.asTag} \u00a7fis now connected.")
                         })
                     } else {
-                        e.reply("No request found.").setEphemeral(true).queue()
+                        e.reply("❌ **No link request found.** The request may have expired or already been processed.").setEphemeral(true).queue()
                     }
                 }
                 e.componentId.startsWith("link:no:") -> {
@@ -192,14 +208,14 @@ object BotService {
                     val req = LinkService.getRequestByDiscord(e.user.idLong)
                     if (req == uuid) {
                         LinkService.takeRequest(uuid)
-                        e.message.editMessage("Link declined by <@${e.user.id}>").setComponents().queue()
-                        e.channel.sendMessage("<@${e.user.id}> declined the link request.").queue()
-                        e.reply("Request declined.").setEphemeral(true).queue()
+                        e.message.editMessage("❌ **Link request declined by <@${e.user.id}>**").setComponents().queue()
+                        e.channel.sendMessage("🚫 <@${e.user.id}> declined the link request.").queue()
+                        e.reply("❌ **Request declined.** You chose not to link your accounts.").setEphemeral(true).queue()
                         PurpurInsightPlugin.instance.server.scheduler.runTask(PurpurInsightPlugin.instance, Runnable {
-                            PurpurInsightPlugin.instance.server.getPlayer(uuid)?.sendMessage("\u00a7cLink request declined by ${e.user.asTag}.")
+                            PurpurInsightPlugin.instance.server.getPlayer(uuid)?.sendMessage("\u00a7c\u00a7l❌ Link Declined! \u00a7fDiscord user \u00a7b${e.user.asTag} \u00a7fdeclined the link request.")
                         })
                     } else {
-                        e.reply("No request found.").setEphemeral(true).queue()
+                        e.reply("❌ **No link request found.** The request may have expired or already been processed.").setEphemeral(true).queue()
                     }
                 }
             }

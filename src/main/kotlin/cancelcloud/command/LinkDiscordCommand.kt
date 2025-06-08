@@ -18,8 +18,18 @@ object LinkDiscordCommand {
         val discordId = event.user.idLong
         LinkService.createRequest(player.uniqueId, discordId)
 
-        val yes = Component.text("[YES]").clickEvent(ClickEvent.runCommand("/purpurinsight confirm $discordId"))
-        player.sendMessage(Component.text("Discord user ${event.user.asTag} wants to link with you. ").append(yes))
-        event.reply("Request sent to ${player.name}.").setEphemeral(true).queue()
+        val yes = Component.text("[✓ ACCEPT]")
+            .color(net.kyori.adventure.text.format.NamedTextColor.GREEN)
+            .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+            .clickEvent(ClickEvent.runCommand("/purpurinsight confirm $discordId"))
+        
+        player.sendMessage("§e§l🔗 Discord Link Request")
+        player.sendMessage("§f┌───────────────────────────┐")
+        player.sendMessage("§f│ §b${event.user.asTag} §fwants to link! §f│")
+        player.sendMessage("§f│                           │")
+        player.sendMessage(Component.text("§f│ ").append(yes).append(Component.text("             §f│")))
+        player.sendMessage("§f└───────────────────────────┘")
+        
+        event.reply("🔗 **Link request sent to ${player.name}!**\n✅ They need to click the confirmation button in Minecraft.").setEphemeral(true).queue()
     }
 }
