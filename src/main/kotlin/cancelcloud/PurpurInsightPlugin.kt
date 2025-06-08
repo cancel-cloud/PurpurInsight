@@ -7,7 +7,9 @@ import cancelcloud.command.StatsCommand
 import cancelcloud.command.PingCommand
 import cancelcloud.command.AutoUpdatesCommand
 import cancelcloud.command.DiscordChannelCommand
+import cancelcloud.command.LinkDiscordCommand
 import cancelcloud.service.StatsService
+import cancelcloud.service.LinkService
 import cancelcloud.util.EmbedBuilderUtil
 
 // JDA & JDA-KTX
@@ -22,8 +24,10 @@ import dev.minn.jda.ktx.events.listener
 import dev.minn.jda.ktx.events.onCommand
 import dev.minn.jda.ktx.jdabuilder.intents
 import net.dv8tion.jda.api.events.interaction.command.GenericCommandInteractionEvent
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import java.io.File
 import org.bukkit.scheduler.BukkitTask
+import java.util.UUID
 
 class PurpurInsightPlugin : JavaPlugin() {
     companion object {
@@ -64,6 +68,7 @@ class PurpurInsightPlugin : JavaPlugin() {
 
         // Spieler-Zeitlistener registrieren
         server.pluginManager.registerEvents(PlayerListener(), this)
+        LinkService.load(this)
 
         // Serverbefehl registrieren
         getCommand("purpurinsight")?.setExecutor(DiscordChannelCommand())
@@ -165,6 +170,9 @@ class PurpurInsightPlugin : JavaPlugin() {
             guild?.upsertCommand("auto-updates", "Setzt Intervall f\u00fcr automatische Updates")
                 ?.addOption(OptionType.INTEGER, "minutes", "Intervall in Minuten (0 zum Deaktivieren)", false)
                 ?.queue()
+            guild?.upsertCommand("link", "Verkn\u00fcpft Discord mit Minecraft")
+                ?.addOption(OptionType.STRING, "player", "Minecraft Spieler", true)
+                ?.queue()
         }
 
         jda.onCommand(botConfig.commandName) { event: GenericCommandInteractionEvent ->
@@ -182,14 +190,23 @@ class PurpurInsightPlugin : JavaPlugin() {
             AutoUpdatesCommand(slashEvent)
         }
 
-        jda.onCommand("ping") { event: GenericCommandInteractionEvent ->
+        jda.onCommand("link") { event: GenericCommandInteractionEvent ->
             val slashEvent = event as? SlashCommandInteractionEvent ?: return@onCommand
-            PingCommand(slashEvent)
+            LinkDiscordCommand(slashEvent)
         }
 
-        jda.onCommand("auto-updates") { event: GenericCommandInteractionEvent ->
-            val slashEvent = event as? SlashCommandInteractionEvent ?: return@onCommand
-            AutoUpdatesCommand(slashEvent)
+        jda.listener<ButtonInteractionEvent> { e ->
+            if (e.componentId.startsWith("link:")) {
+                val uuid = UUID.fromString(e.componentId.substringAfter("link:"))
+                val req = LinkService.getRequestByDiscord(e.user.idLong)
+                if (req == uuid) {
+                    LinkService.takeRequest(uuid)
+                    LinkService.link(uuid, e.user.idLong)
+                    e.reply("Accounts linked!").setEphemeral(true).queue()
+                } else {
+                    e.reply("No request found.").setEphemeral(true).queue()
+                }
+            }
         }
 
         startAutoUpdates()

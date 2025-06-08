@@ -10,6 +10,6 @@ description: "Sammelt Server-Statistiken und sendet sie per Discord-Slash-Comman
 commands:
   purpurinsight:
     description: "Verwaltet PurpurInsight-Einstellungen"
-    usage: "/purpurinsight <stats-channel|admin-channel> <id> | restart"
+    usage: "/purpurinsight <stats-channel|admin-channel> <id> | restart | link <discordId> | confirm <discordId>"
     permission: purpurstats:discordsettings
     aliases: [purpurinsights]
