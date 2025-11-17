@@ -62,14 +62,15 @@ tasks.named<ShadowJar>("shadowJar").configure {
 }
 
 // Task zum Kopieren des erstellten JAR in den Zielordner:
-tasks.register<Copy>("copyJar") {
-    dependsOn(tasks.named<ShadowJar>("shadowJar"))
-    from(tasks.named<ShadowJar>("shadowJar").get().archiveFile.get().asFile)
-    into(file("/Users/cancelcloud/Developer/Minecraft/purpur21-4/plugins/"))
-    rename { "PurpurInsight-${version}.jar" }
-}
+// Disabled for now - uncomment and update path as needed
+// tasks.register<Copy>("copyJar") {
+//     dependsOn(tasks.named<ShadowJar>("shadowJar"))
+//     from(tasks.named<ShadowJar>("shadowJar").get().archiveFile.get().asFile)
+//     into(file("/Users/cancelcloud/Developer/Minecraft/purpur21-4/plugins/"))
+//     rename { "PurpurInsight-${version}.jar" }
+// }
 
 // Finalisiere den Build-Task, sodass nach dem Build automatisch das JAR kopiert wird:
-tasks.named("build") {
-    finalizedBy("copyJar")
-}
+// tasks.named("build") {
+//     finalizedBy("copyJar")
+// }

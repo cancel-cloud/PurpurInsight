@@ -6,6 +6,7 @@ bot:
   command-name: "stats"
 
 auto-update-minutes: 30
+stats-panel-message-id: 0
 
 playtime: {}
 links: {}

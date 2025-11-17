@@ -29,6 +29,13 @@
 - `/ping` - Show bot gateway latency
 - `/auto-updates` - Configure automatic update interval (minutes)
 - `/link <player>` - Initiate Discord-Minecraft account linking
+- `/players` - Show paginated list of online players with ping
+- **Admin Commands** (require Discord Administrator permission):
+  - `/whitelist add <player>` - Add player to server whitelist
+  - `/whitelist remove <player>` - Remove player from server whitelist
+  - `/kick <player> [reason]` - Kick a player from the server
+  - `/ban add <player> [reason] [duration]` - Ban a player (optionally temporary)
+  - `/ban remove <player>` - Unban a player
 
 #### 3. Minecraft In-Game Commands
 `/purpurinsight` with subcommands:
@@ -41,7 +48,12 @@
 Requires permission: `purpurstats:discordsettings`
 
 #### 4. Automatic Features
-- **Auto-Updates**: Posts stats embed to stats channel at configurable intervals (default: 30 min)
+- **Auto-Updating Stats Panel**: Edits the same stats message instead of posting new ones (default: 30 min)
+  - First run posts a new message and saves its ID
+  - Subsequent runs edit the existing message
+  - Auto-recovers by posting new message if original is deleted
+- **Dynamic Bot Status**: Real-time player count in bot's status (updates every 30 seconds)
+  - Shows "X/Y players online" in bot activity
 - **Server Monitoring**: Continuous monitoring with alerts for:
   - High player count (≥80% capacity)
   - Critical memory usage (≥90%)
@@ -59,6 +71,40 @@ Requires permission: `purpurstats:discordsettings`
 - Bidirectional confirmation messages
 - Duplicate/conflict prevention
 
+#### 6. Interactive Discord Features (Enhancement #8)
+- **Paginated Player List**: `/players` command shows online players with navigation buttons
+  - 10 players per page
+  - Previous/Next buttons for navigation
+  - Shows player ping with color-coded indicators (green/yellow/orange/red)
+  - Real-time updates when navigating
+- **Permission-Gated Admin Commands**: All admin commands check for Discord Administrator permission
+  - User-friendly error messages for permission denied
+  - Actions logged to server console with Discord user information
+
+#### 7. Whitelist Management via Discord (Enhancement #9)
+- **Permission Check**: Requires Discord Administrator permission
+- **Add to Whitelist**: `/whitelist add <player>`
+  - Checks if player already whitelisted
+  - Confirms successful addition
+  - Logs action to server console
+- **Remove from Whitelist**: `/whitelist remove <player>`
+  - Checks if player is on whitelist
+  - Confirms successful removal
+  - Logs action to server console
+- **Player Kicking**: `/kick <player> [reason]`
+  - Only kicks online players
+  - Default reason: "Kicked by Discord admin"
+  - Shows who performed the action
+- **Ban Management**: `/ban add <player> [reason] [duration]`
+  - Supports permanent and temporary bans
+  - Duration in minutes (optional)
+  - Kicks online players immediately
+  - Default reason: "Banned by Discord admin"
+  - Logs ban source as "Discord: username#discriminator"
+- **Unban Players**: `/ban remove <player>`
+  - Removes active bans
+  - Confirms action in Discord
+
 ---
 
 ## Architecture
@@ -74,6 +120,10 @@ src/main/kotlin/cancelcloud/
 │   ├── PingCommand.kt              # Discord /ping handler
 │   ├── AutoUpdatesCommand.kt       # Discord /auto-updates handler
 │   ├── LinkDiscordCommand.kt       # Discord /link handler
+│   ├── PlayersCommand.kt           # Discord /players handler (NEW)
+│   ├── WhitelistCommand.kt         # Discord /whitelist handler (NEW)
+│   ├── KickCommand.kt              # Discord /kick handler (NEW)
+│   ├── BanCommand.kt               # Discord /ban handler (NEW)
 │   └── DiscordChannelCommand.kt    # Minecraft /purpurinsight handler
 ├── service/
 │   ├── BotService.kt               # Discord bot lifecycle & scheduling
@@ -85,7 +135,8 @@ src/main/kotlin/cancelcloud/
 ├── config/
 │   └── BotConfig.kt                # Configuration data class
 └── util/
-    └── EmbedBuilderUtil.kt         # Discord embed formatting
+    ├── EmbedBuilderUtil.kt         # Discord embed formatting
+    └── PermissionUtil.kt           # Discord permission checking (NEW)
 ```
 
 ### Key Design Patterns
@@ -132,6 +183,7 @@ bot:
   command-name: "stats"                # Discord command name (customizable)
 
 auto-update-minutes: 30                 # Auto-update interval (0 = disabled)
+stats-panel-message-id: 0               # Message ID for auto-updating panel (auto-managed)
 
 playtime:                               # Auto-populated: UUID → milliseconds
   "uuid-here": 3600000
@@ -252,17 +304,19 @@ Commands.literal("subcommand")
 
 ### Priority 3: User Experience
 
-8. **Interactive Discord Panels**
-   - Auto-updating status message (edits instead of posting new)
-   - Button controls (restart warnings, whitelist management)
-   - Paginated player lists
-   - Real-time player count in bot status
+8. **✅ Interactive Discord Panels** (IMPLEMENTED)
+   - ✅ Auto-updating status message (edits instead of posting new)
+   - ✅ Paginated player lists with navigation buttons
+   - ✅ Real-time player count in bot status
+   - Future: Button controls for restart warnings
 
-9. **Whitelist Management via Discord**
-   - `/whitelist add/remove` commands
-   - Linked Discord users auto-whitelisted
-   - Ban/kick commands with reason logging
-   - Approval workflow for whitelist requests
+9. **✅ Whitelist Management via Discord** (IMPLEMENTED)
+   - ✅ `/whitelist add/remove` commands with admin permission check
+   - ✅ `/kick` command with reason logging
+   - ✅ `/ban add/remove` commands with reason logging and temporary ban support
+   - ✅ All actions logged to server console with Discord user info
+   - Future: Linked Discord users auto-whitelisted
+   - Future: Approval workflow for whitelist requests
 
 10. **Custom Announcements**
     - `/announce` command to broadcast to Minecraft from Discord

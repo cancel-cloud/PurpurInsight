@@ -3,7 +3,6 @@ package cancelcloud.service
 import cancelcloud.PurpurInsightPlugin
 import cancelcloud.command.*
 import cancelcloud.config.BotConfig
-import cancelcloud.service.LinkService
 import cancelcloud.util.EmbedBuilderUtil
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.events.interaction.command.GenericCommandInteractionEvent
@@ -30,32 +29,39 @@ object BotService {
         get() = autoUpdateMinutes
     private var updateTask: BukkitTask? = null
     private var monitorTask: BukkitTask? = null
+    private var statusUpdateTask: BukkitTask? = null
     private var playerAlert = false
     private var memoryAlert = false
     private var cpuAlert = false
     private var tpsAlert = false
     private var diskAlert = false
+    private var statsPanelMessageId: Long = 0
 
     fun init(plugin: PurpurInsightPlugin, config: BotConfig) {
         this.plugin = plugin
         botConfig = config
         autoUpdateMinutes = plugin.config.getLong("auto-update-minutes", 30)
+        statsPanelMessageId = plugin.config.getLong("stats-panel-message-id", 0)
         startBot()
         startAutoUpdates()
         startMonitoring()
+        startBotStatusUpdates()
     }
 
     fun restart() {
         shutdown()
         botConfig = BotConfig.load(plugin.config)
+        statsPanelMessageId = plugin.config.getLong("stats-panel-message-id", 0)
         startBot()
         startAutoUpdates()
         startMonitoring()
+        startBotStatusUpdates()
     }
 
     fun shutdown() {
         updateTask?.cancel()
         monitorTask?.cancel()
+        statusUpdateTask?.cancel()
         if (this::jda.isInitialized) {
             try {
                 plugin.logger.info("Shutting down Discord bot...")
@@ -92,8 +98,44 @@ object BotService {
             val stats = StatsService.collectAll()
             val embed = EmbedBuilderUtil.buildEmbed(stats).build()
             val channel = jda.getTextChannelById(botConfig.statsChannelId)
-            channel?.sendMessageEmbeds(embed)?.queue()
+
+            if (channel == null) return@Runnable
+
+            // If we have a stats panel message ID, edit it instead of posting new
+            if (statsPanelMessageId != 0L) {
+                channel.editMessageEmbedsById(statsPanelMessageId, embed).queue(
+                    { /* Success */ },
+                    { error ->
+                        // If editing fails (message deleted), post a new one
+                        channel.sendMessageEmbeds(embed).queue { message ->
+                            statsPanelMessageId = message.idLong
+                            plugin.config.set("stats-panel-message-id", statsPanelMessageId)
+                            plugin.saveConfig()
+                        }
+                    }
+                )
+            } else {
+                // Post new message and save its ID
+                channel.sendMessageEmbeds(embed).queue { message ->
+                    statsPanelMessageId = message.idLong
+                    plugin.config.set("stats-panel-message-id", statsPanelMessageId)
+                    plugin.saveConfig()
+                }
+            }
         }, ticks, ticks)
+    }
+
+    private fun startBotStatusUpdates() {
+        statusUpdateTask?.cancel()
+        // Update bot status every 30 seconds (600 ticks)
+        statusUpdateTask = plugin.server.scheduler.runTaskTimer(plugin, Runnable {
+            val onlinePlayers = plugin.server.onlinePlayers.size
+            val maxPlayers = plugin.server.maxPlayers
+            jda.presence.setPresence(
+                net.dv8tion.jda.api.OnlineStatus.ONLINE,
+                net.dv8tion.jda.api.entities.Activity.playing("$onlinePlayers/$maxPlayers players online")
+            )
+        }, 0L, 600L)
     }
 
     private fun startMonitoring() {
@@ -163,6 +205,37 @@ object BotService {
             guild?.upsertCommand("link", "Verknüpft Discord mit Minecraft")
                 ?.addOption(OptionType.STRING, "player", "Minecraft Spieler", true)
                 ?.queue()
+
+            // Whitelist management (requires Discord admin permission)
+            guild?.upsertCommand("whitelist", "Verwaltet die Server-Whitelist (Admin)")
+                ?.addSubcommands(
+                    net.dv8tion.jda.api.interactions.commands.build.SubcommandData("add", "Fügt einen Spieler zur Whitelist hinzu")
+                        .addOption(OptionType.STRING, "player", "Minecraft Spieler", true),
+                    net.dv8tion.jda.api.interactions.commands.build.SubcommandData("remove", "Entfernt einen Spieler von der Whitelist")
+                        .addOption(OptionType.STRING, "player", "Minecraft Spieler", true)
+                )
+                ?.queue()
+
+            // Kick command (requires Discord admin permission)
+            guild?.upsertCommand("kick", "Kickt einen Spieler vom Server (Admin)")
+                ?.addOption(OptionType.STRING, "player", "Minecraft Spieler", true)
+                ?.addOption(OptionType.STRING, "reason", "Grund für den Kick", false)
+                ?.queue()
+
+            // Ban management (requires Discord admin permission)
+            guild?.upsertCommand("ban", "Verwaltet Server-Bans (Admin)")
+                ?.addSubcommands(
+                    net.dv8tion.jda.api.interactions.commands.build.SubcommandData("add", "Bannt einen Spieler")
+                        .addOption(OptionType.STRING, "player", "Minecraft Spieler", true)
+                        .addOption(OptionType.STRING, "reason", "Grund für den Ban", false)
+                        .addOption(OptionType.INTEGER, "duration", "Dauer in Minuten (leer = permanent)", false),
+                    net.dv8tion.jda.api.interactions.commands.build.SubcommandData("remove", "Entbannt einen Spieler")
+                        .addOption(OptionType.STRING, "player", "Minecraft Spieler", true)
+                )
+                ?.queue()
+
+            // Players list command
+            guild?.upsertCommand("players", "Zeigt alle Online-Spieler")?.queue()
         }
 
         jda.onCommand(botConfig.commandName) { event: GenericCommandInteractionEvent ->
@@ -185,8 +258,31 @@ object BotService {
             LinkDiscordCommand(slashEvent)
         }
 
+        jda.onCommand("whitelist") { event: GenericCommandInteractionEvent ->
+            val slashEvent = event as? SlashCommandInteractionEvent ?: return@onCommand
+            WhitelistCommand(slashEvent)
+        }
+
+        jda.onCommand("kick") { event: GenericCommandInteractionEvent ->
+            val slashEvent = event as? SlashCommandInteractionEvent ?: return@onCommand
+            KickCommand(slashEvent)
+        }
+
+        jda.onCommand("ban") { event: GenericCommandInteractionEvent ->
+            val slashEvent = event as? SlashCommandInteractionEvent ?: return@onCommand
+            BanCommand(slashEvent)
+        }
+
+        jda.onCommand("players") { event: GenericCommandInteractionEvent ->
+            val slashEvent = event as? SlashCommandInteractionEvent ?: return@onCommand
+            PlayersCommand(slashEvent)
+        }
+
         jda.listener<ButtonInteractionEvent> { e ->
             when {
+                e.componentId.startsWith("players:") -> {
+                    PlayersCommand.handleButtonInteraction(e)
+                }
                 e.componentId.startsWith("link:yes:") -> {
                     val uuid = UUID.fromString(e.componentId.substringAfter("link:yes:"))
                     val req = LinkService.getRequestByDiscord(e.user.idLong)
